@@ -4,10 +4,21 @@ shadowsocks-MoreAPI
 [![PyPI version]][PyPI]
 [![Build Status]][Travis CI]
 
+
+A fast tunnel proxy that helps you bypass firewalls.
+
+Features:
+- TCP & UDP support
+- User management API
+- TCP Fast Open
+- Workers and graceful restart
+- Destination IP blacklist
+
+
 新增 API：
 -------
 
-###   提供访问记录输出
+### 提供访问记录输出
 可以通过在配置文中写入 
 "acc_rec_out_cli_port":6666
 "acc_rec_out_ser_port":6667
@@ -18,15 +29,6 @@ shadowsocks-MoreAPI
 注意：如果不指定 acc_rec_out_cli_port 则 SS Server 不会输出访问记录，且支持配置文件中指定
 
 
-
-A fast tunnel proxy that helps you bypass firewalls.
-
-Features:
-- TCP & UDP support
-- User management API
-- TCP Fast Open
-- Workers and graceful restart
-- Destination IP blacklist
 
 Server
 ------
