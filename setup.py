@@ -15,7 +15,7 @@ setup(
     url='https://github.com/shadowsocks/shadowsocks',
     packages=['shadowsocks', 'shadowsocks.crypto'],
     package_data={
-        'shadowsocks': ['README.rst', 'LICENSE']
+        'shadowsocks': ['README.rst', 'LICENSE','shadowsocks_config.json']
     },
     install_requires=[],
     entry_points="""
