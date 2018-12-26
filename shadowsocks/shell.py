@@ -211,6 +211,10 @@ def check_config(config, is_local):
                        config['crypto_path'])
 
 
+
+#   Magicalbomb
+#   这个函数用于初试化整个 SS Server 的配置
+#
 def get_config(is_local):
     global verbose
 
@@ -311,6 +315,13 @@ def get_config(is_local):
         logging.error('config not specified')
         print_help(is_local)
         sys.exit(2)
+
+
+    #   Magicalbomb
+    #   读取配置文件中的 acc_records_out_port
+    #   这个属性用于指定 SS Server 访问记录 UDP 输出端口
+    config['acc_rec_out_cli_port'] = int(config.get('acc_rec_out_cli_port',0))
+    config['acc_rec_out_ser_port'] = int(config.get('acc_rec_out_ser_port',0))
 
     config['password'] = to_bytes(config.get('password', b''))
     config['method'] = to_str(config.get('method', 'aes-256-cfb'))

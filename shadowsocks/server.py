@@ -27,7 +27,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 from shadowsocks import shell, daemon, eventloop, tcprelay, udprelay, \
     asyncdns, manager
 
-
+#   Magicalbomb
+#   这里是整个 SS Server 的入口
+#
 def main():
     shell.check_python()
 

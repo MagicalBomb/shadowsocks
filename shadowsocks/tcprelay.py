@@ -154,6 +154,18 @@ class TCPRelayHandler(object):
         self.last_activity = 0
         self._update_activity()
 
+
+        #   Magicalbomb
+        #   初始化一个 UDP socket 用于输出访问记录
+        #
+        if self._config['acc_rec_out_cli_port'] and self._config['acc_rec_out_cli_port']:
+            acc_rec_out_cli_port = self._config['acc_rec_out_cli_port']
+            acc_rec_out_ser_port = self._config['acc_rec_out_ser_port']
+            self._acc_records_out_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+            self._acc_records_out_socket.bind(('127.0.0.1',acc_rec_out_ser_port))
+            self._acc_records_out_addr = ('127.0.0.1',acc_rec_out_cli_port)
+        
+
     def __hash__(self):
         # default __hash__ is id / 16
         # we want to eliminate collisions
@@ -297,6 +309,11 @@ class TCPRelayHandler(object):
                         traceback.print_exc()
                     self.destroy()
 
+
+    #   Magicalbomb
+    #   这个函数 应该是 用于处理一对 TCP 连接中地址，端口一部分的信息
+    #   TCPRelayHandler._config['server_port'] 为 SS 客户端访登录的端口号
+    #   
     @shell.exception_handle(self_=True, destroy=True, conn_err=True)
     def _handle_stage_addr(self, data):
         if self._is_local:
@@ -333,10 +350,28 @@ class TCPRelayHandler(object):
         header_result = parse_header(data)
         if header_result is None:
             raise Exception('can not parse header')
+
+
+
+        #   Magicalbomb
+        #   这里是一个可以确信的拥有完整的客户端访问信息的位置
+        #
         addrtype, remote_addr, remote_port, header_length = header_result
         logging.info('connecting %s:%d from %s:%d' %
                      (common.to_str(remote_addr), remote_port,
                       self._client_address[0], self._client_address[1]))
+
+        self.send_acc_rec(
+            bytes(
+                '%s:%d;%s:%d;%d' % (common.to_str(remote_addr), remote_port,
+                      self._client_address[0], self._client_address[1],self._config['server_port']),
+                encoding='ascii'
+            )
+        ) 
+
+
+
+
         if self._is_local is False:
             # spec https://shadowsocks.org/en/spec/one-time-auth.html
             self._ota_enable_session = addrtype & ADDRTYPE_AUTH
@@ -716,6 +751,27 @@ class TCPRelayHandler(object):
             self._local_sock = None
         self._dns_resolver.remove_callback(self._handle_dns_resolved)
         self._server.remove_handler(self)
+
+        #   Magicalbomb
+        #   释放访问记录输出 socket 的资源
+        self._acc_records_out_socket.close()
+        self._acc_records_out_socket = None
+
+    def send_acc_rec(self,data):
+        if not self._acc_records_out_socket:
+            return
+
+        try:
+            self._acc_records_out_socket.sendto(data, self._acc_records_out_addr)
+        except (socket.error, OSError, IOError) as e:
+            error_no = eventloop.errno_from_exception(e)
+            if error_no in (errno.EAGAIN, errno.EINPROGRESS,
+                            errno.EWOULDBLOCK):
+                return
+            else:
+                shell.print_exception(e)
+                if self._config['verbose']:
+                    traceback.print_exc()
 
 
 class TCPRelay(object):
