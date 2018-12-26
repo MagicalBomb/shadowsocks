@@ -1,4 +1,4 @@
-shadowsocks
+shadowsocks-MoreAPI
 ===========
 
 [![PyPI version]][PyPI]
