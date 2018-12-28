@@ -99,6 +99,14 @@ DOWN_STREAM_BUF_SIZE = 32 * 1024
 # helper exceptions for TCPRelayHandler
 
 
+# Magicalbomb
+# 在全局位置创建访问记录输出 socket
+# acc_rec_socket 是给服务器使用的用于输出信息 UDP socket
+# acc_rec_socket 是输出信息时使用的客户端的接受端口
+acc_rec_socket = None
+acc_rec_addr = None
+
+
 class BadSocksHeader(Exception):
     pass
 
@@ -110,7 +118,7 @@ class NoAcceptableMethods(Exception):
 class TCPRelayHandler(object):
 
     def __init__(self, server, fd_to_handlers, loop, local_sock, config,
-                 dns_resolver, is_local,acc_rec_socket):
+                 dns_resolver, is_local):
         self._server = server
         self._fd_to_handlers = fd_to_handlers
         self._loop = loop
@@ -153,9 +161,6 @@ class TCPRelayHandler(object):
                  self._server)
         self.last_activity = 0
         self._update_activity()
-
-        # 保存用于输出访问记录的 socket
-        self._acc_rec_socket,self._acc_rec_addr = acc_rec_socket
 
         
 
@@ -748,11 +753,14 @@ class TCPRelayHandler(object):
 
 
     def send_acc_rec(self,data):
-        if not self._acc_rec_socket:
+        global acc_rec_socket
+        global acc_rec_addr
+        
+        if not acc_rec_socket:
             return
         
         try:
-            self._acc_rec_socket.sendto(data,self._acc_rec_addr)
+            acc_rec_socket.sendto(data,acc_rec_addr)
         except (socket.error, OSError, IOError) as e:
             error_no = eventloop.errno_from_exception(e)
             if error_no in (errno.EAGAIN, errno.EINPROGRESS,
@@ -813,13 +821,15 @@ class TCPRelay(object):
         #   Magicalbomb
         #   初始化一个 UDP socket 用于输出访问记录
         #
-        self._acc_rec_out_socket = None
+        global acc_rec_socket
+        global acc_rec_addr
         if self._config['acc_rec_out_cli_port'] and self._config['acc_rec_out_ser_port']:
-            acc_rec_out_cli_port = self._config['acc_rec_out_cli_port']
-            acc_rec_out_ser_port = self._config['acc_rec_out_ser_port']
-            self._acc_rec_out_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-            self._acc_rec_out_socket.bind(('127.0.0.1',acc_rec_out_ser_port))
-            self._acc_rec_out_addr = ('127.0.0.1',acc_rec_out_cli_port)
+            if acc_rec_socket == None and acc_rec_addr == None:
+                acc_rec_out_cli_port = self._config['acc_rec_out_cli_port']
+                acc_rec_out_ser_port = self._config['acc_rec_out_ser_port']
+                acc_rec_socket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                acc_rec_socket.bind(('127.0.0.1',acc_rec_out_ser_port))
+                acc_rec_addr = ('127.0.0.1',acc_rec_out_cli_port)
 
 
     def add_to_loop(self, loop):
@@ -906,7 +916,6 @@ class TCPRelay(object):
                 TCPRelayHandler(self, self._fd_to_handlers,
                                 self._eventloop, conn[0], self._config,
                                 self._dns_resolver, self._is_local,
-                                (self._acc_rec_out_socket,self._acc_rec_out_addr)
                                 )
             except (OSError, IOError) as e:
                 error_no = eventloop.errno_from_exception(e)
@@ -948,8 +957,3 @@ class TCPRelay(object):
             for handler in list(self._fd_to_handlers.values()):
                 handler.destroy()
 
-        #   Magicalbomb
-        #   释放访问记录输出 socket 的资源
-        if self._acc_rec_socket:
-            self._acc_rec_socket.close()
-            self._acc_rec_socket = None
